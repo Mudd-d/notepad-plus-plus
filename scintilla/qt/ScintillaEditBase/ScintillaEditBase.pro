@@ -6,13 +6,14 @@
 
 QT       += core gui
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
+equals(QT_MAJOR_VERSION, 6): QT += core5compat
 
 TARGET = ScintillaEditBase
 TEMPLATE = lib
 CONFIG += lib_bundle
 CONFIG += c++1z
 
-VERSION = 5.3.7
+VERSION = 5.6.9
 
 SOURCES += \
     PlatQt.cpp \
@@ -22,6 +23,7 @@ SOURCES += \
     ../../src/ViewStyle.cxx \
     ../../src/UniqueString.cxx \
     ../../src/UniConversion.cxx \
+    ../../src/UndoHistory.cxx \
     ../../src/Style.cxx \
     ../../src/Selection.cxx \
     ../../src/ScintillaBase.cxx \
@@ -57,6 +59,7 @@ HEADERS  += \
     ScintillaEditBase.h \
     ../../src/XPM.h \
     ../../src/ViewStyle.h \
+    ../../src/UndoHistory.h \
     ../../src/UniConversion.h \
     ../../src/Style.h \
     ../../src/SplitVector.h \
@@ -97,7 +100,7 @@ CONFIG(release, debug|release) {
     DEFINES += NDEBUG=1
 }
 
-DESTDIR = ../../bin
+DESTDIR = $$_PRO_FILE_PWD_/../../bin
 
 macx {
 	QMAKE_LFLAGS_SONAME = -Wl,-install_name,@executable_path/../Frameworks/

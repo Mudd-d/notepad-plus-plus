@@ -17,12 +17,22 @@
 
 #include "GoToLineDlg.h"
 
+#include <windows.h>
 
-intptr_t CALLBACK GoToLineDlg::run_dlgProc(UINT message, WPARAM wParam, LPARAM)
+#include <string>
+
+#include <Scintilla.h>
+
+#include "NppConstants.h"
+#include "NppDarkMode.h"
+#include "Parameters.h"
+#include "resource.h"
+
+intptr_t CALLBACK GoToLineDlg::run_dlgProc(UINT message, WPARAM wParam, LPARAM lParam)
 {
 	switch (message)
 	{
-		case WM_INITDIALOG :
+		case WM_INITDIALOG:
 		{
 			NppDarkMode::autoSubclassAndThemeChildControls(_hSelf);
 
@@ -33,13 +43,23 @@ intptr_t CALLBACK GoToLineDlg::run_dlgProc(UINT message, WPARAM wParam, LPARAM)
 
 		case WM_CTLCOLOREDIT:
 		{
-			return NppDarkMode::onCtlColorSofter(reinterpret_cast<HDC>(wParam));
+			return NppDarkMode::onCtlColorCtrl(reinterpret_cast<HDC>(wParam));
 		}
 
 		case WM_CTLCOLORDLG:
+		{
+			return NppDarkMode::onCtlColorDlg(reinterpret_cast<HDC>(wParam));
+		}
+
 		case WM_CTLCOLORSTATIC:
 		{
-			return NppDarkMode::onCtlColorDarker(reinterpret_cast<HDC>(wParam));
+			const auto hdcStatic = reinterpret_cast<HDC>(wParam);
+			const auto dlgCtrlID = ::GetDlgCtrlID(reinterpret_cast<HWND>(lParam));
+			if (dlgCtrlID == ID_CURRLINE_EDIT)
+			{
+				return NppDarkMode::onCtlColor(hdcStatic);
+			}
+			return NppDarkMode::onCtlColorDlg(hdcStatic);
 		}
 
 		case WM_PRINTCLIENT:
@@ -51,27 +71,23 @@ intptr_t CALLBACK GoToLineDlg::run_dlgProc(UINT message, WPARAM wParam, LPARAM)
 			break;
 		}
 
-		case WM_ERASEBKGND:
-		{
-			if (NppDarkMode::isEnabled())
-			{
-				RECT rc{};
-				getClientRect(rc);
-				::FillRect(reinterpret_cast<HDC>(wParam), &rc, NppDarkMode::getDarkerBackgroundBrush());
-				return TRUE;
-			}
-			break;
-		}
-
 		case NPPM_INTERNAL_REFRESHDARKMODE:
 		{
 			NppDarkMode::autoThemeChildControls(_hSelf);
 			return TRUE;
 		}
 
+		case WM_DPICHANGED:
+		{
+			_dpiManager.setDpiWP(wParam);
+			setPositionDpi(lParam);
+
+			return TRUE;
+		}
+
 		case WM_COMMAND:
 		{
-			switch (wParam)
+			switch (LOWORD(wParam))
 			{
 				case IDCANCEL : // Close
 					display(false);
@@ -79,6 +95,7 @@ intptr_t CALLBACK GoToLineDlg::run_dlgProc(UINT message, WPARAM wParam, LPARAM)
 
 				case IDOK :
                 {
+					(*_ppEditView)->execute(SCI_SETMODEVENTMASK, MODEVENTMASK_OFF);
                     long long line = getLine();
                     if (line != -1)
                     {
@@ -103,6 +120,8 @@ intptr_t CALLBACK GoToLineDlg::run_dlgProc(UINT message, WPARAM wParam, LPARAM)
 							(*_ppEditView)->execute(SCI_GOTOPOS, posToGoto);
 						}
 					}
+					unsigned long MODEVENTMASK_ON = NppParameters::getInstance().getScintillaModEventMask();
+					(*_ppEditView)->execute(SCI_SETMODEVENTMASK, MODEVENTMASK_ON);
 
 					SCNotification notification{};
 					notification.nmhdr.code = SCN_PAINTED;
@@ -110,7 +129,7 @@ intptr_t CALLBACK GoToLineDlg::run_dlgProc(UINT message, WPARAM wParam, LPARAM)
 					notification.nmhdr.idFrom = ::GetDlgCtrlID(_hSelf);
 					::SendMessage(_hParent, WM_NOTIFY, LINKTRIGGERED, reinterpret_cast<LPARAM>(&notification));
 
-                    (*_ppEditView)->getFocus();
+                    (*_ppEditView)->grabFocus();
                     return TRUE;
                 }
 
@@ -144,7 +163,7 @@ intptr_t CALLBACK GoToLineDlg::run_dlgProc(UINT message, WPARAM wParam, LPARAM)
 	return FALSE;
 }
 
-void GoToLineDlg::updateLinesNumbers() const 
+void GoToLineDlg::updateLinesNumbers() const
 {
 	size_t current = 0;
 	size_t limit = 0;
@@ -161,6 +180,6 @@ void GoToLineDlg::updateLinesNumbers() const
 		limit = (currentDocLength > 0 ? currentDocLength - 1 : 0);
 	}
 
-	::SetDlgItemTextA(_hSelf, ID_CURRLINE, std::to_string(current).c_str());
-	::SetDlgItemTextA(_hSelf, ID_LASTLINE, std::to_string(limit).c_str());
+	::SetDlgItemTextW(_hSelf, ID_CURRLINE_EDIT, std::to_wstring(current).c_str());
+	::SetDlgItemTextW(_hSelf, ID_LASTLINE, std::to_wstring(limit).c_str());
 }

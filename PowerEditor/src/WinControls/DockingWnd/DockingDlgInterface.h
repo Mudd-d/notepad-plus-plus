@@ -17,16 +17,19 @@
 
 #pragma once
 
-#include "dockingResource.h"
-#include "Docking.h"
+#include <windows.h>
 
-#include <assert.h>
 #include <shlwapi.h>
-#include "Common.h"
-#include "StaticDialog.h"
+
+#include <array>
+#include <cassert>
+#include <string>
+
+#include "Docking.h"
+#include "Notepad_plus_msgs.h"
 #include "NppDarkMode.h"
-
-
+#include "StaticDialog.h"
+#include "dockingResource.h"
 
 class DockingDlgInterface : public StaticDialog
 {
@@ -34,21 +37,21 @@ public:
 	DockingDlgInterface() = default;
 	explicit DockingDlgInterface(int dlgID): _dlgID(dlgID) {}
 
-	virtual void init(HINSTANCE hInst, HWND parent) {
+	void init(HINSTANCE hInst, HWND parent) override {
 		StaticDialog::init(hInst, parent);
-		TCHAR temp[MAX_PATH];
+		wchar_t temp[MAX_PATH];
 		::GetModuleFileName(hInst, temp, MAX_PATH);
 		_moduleName = ::PathFindFileName(temp);
 	}
 
-    void create(tTbData* data, bool isRTL = false) {
+	virtual void create(DockedWidgetData* data, bool isRTL = false) {
 		assert(data != nullptr);
-		StaticDialog::create(_dlgID, isRTL);
-		TCHAR temp[MAX_PATH];
+		StaticDialog::create(_dlgID, isRTL, false, 9, StaticDialog::getSystemFontFaceName());
+		wchar_t temp[MAX_PATH];
 		::GetWindowText(_hSelf, temp, MAX_PATH);
 		_pluginName = temp;
 
-        // user information
+		// user information
 		data->hClient = _hSelf;
 		data->pszName = _pluginName.c_str();
 
@@ -56,21 +59,22 @@ public:
 		data->uMask = 0;
 
 		// additional info
-		data->pszAddInfo = NULL;
+		data->pszAddInfo = nullptr;
+	}
+
+	virtual void create(DockedWidgetData* data, std::array<int, 3> iconIDs, bool isRTL = false) {
+		create(data, isRTL);
+		_iconIDs = iconIDs;
 	}
 
 	virtual void updateDockingDlg() {
 		::SendMessage(_hParent, NPPM_DMMUPDATEDISPINFO, 0, reinterpret_cast<LPARAM>(_hSelf));
 	}
 
-    virtual void destroy() {
-		StaticDialog::destroy();
-	}
-
 	virtual void setBackgroundColor(COLORREF) {}
 	virtual void setForegroundColor(COLORREF) {}
 
-	virtual void display(bool toShow = true) const {
+	void display(bool toShow = true) const override {
 		::SendMessage(_hParent, toShow ? NPPM_DMMSHOW : NPPM_DMMHIDE, 0, reinterpret_cast<LPARAM>(_hSelf));
 	}
 
@@ -82,19 +86,41 @@ public:
 		_isClosed = toClose;
 	}
 
-	const TCHAR * getPluginFileName() const {
+	const wchar_t * getPluginFileName() const {
 		return _moduleName.c_str();
+	}
+
+	const std::array<int, 3>& getIconIDs() const {
+		return _iconIDs;
+	}
+
+	static void setFontForChild(HWND hChild, HFONT hFont) noexcept {
+		if (hChild != nullptr)
+		{
+			::SendMessage(hChild, WM_SETFONT, reinterpret_cast<WPARAM>(hFont), MAKELPARAM(TRUE, 0));
+		}
+	}
+
+	HFONT setFontForChild(HWND hChild) const noexcept {
+		const auto hFont = reinterpret_cast<HFONT>(::SendMessage(_hSelf, WM_GETFONT, 0, 0));
+		setFontForChild(hChild, hFont);
+		return hFont;
 	}
 
 protected :
 	int	_dlgID = -1;
-	bool _isFloating = true;
 	int _iDockedPos = 0;
-	generic_string _moduleName;
-	generic_string _pluginName;
+	std::wstring _moduleName;
+	std::wstring _pluginName;
+	std::array<int, 3> _iconIDs{};
+	bool _isFloating = true;
 	bool _isClosed = false;
 
-	virtual intptr_t CALLBACK run_dlgProc(UINT message, WPARAM wParam, LPARAM lParam) {
+	using StaticDialog::create;
+
+	virtual void onDpiChanged([[maybe_unused]] UINT prevDpi) {}
+
+	intptr_t CALLBACK run_dlgProc(UINT message, WPARAM wParam, LPARAM lParam) override {
 		switch (message)
 		{
 			case WM_ERASEBKGND:
@@ -104,14 +130,23 @@ protected :
 					break;
 				}
 
-				RECT rc = {};
+				RECT rc{};
 				getClientRect(rc);
-				::FillRect(reinterpret_cast<HDC>(wParam), &rc, NppDarkMode::getDarkerBackgroundBrush());
+				::FillRect(reinterpret_cast<HDC>(wParam), &rc, NppDarkMode::getDlgBackgroundBrush());
 				return TRUE;
 			}
-			case WM_NOTIFY: 
+
+			case WM_DPICHANGED:
 			{
-				LPNMHDR	pnmh = reinterpret_cast<LPNMHDR>(lParam);
+				const UINT prevDpi = _dpiManager.getDpi();
+				_dpiManager.setDpiWP(wParam);
+				onDpiChanged(prevDpi);
+				return TRUE;
+			}
+
+			case WM_NOTIFY:
+			{
+				auto* pnmh = reinterpret_cast<LPNMHDR>(lParam);
 
 				if (pnmh->hwndFrom == _hParent)
 				{
@@ -142,5 +177,5 @@ protected :
 				break;
 		}
 		return FALSE;
-	};
+	}
 };

@@ -9,6 +9,7 @@ PlatGTK.o: \
 	../include/Scintilla.h \
 	../include/Sci_Position.h \
 	../include/ScintillaWidget.h \
+	../src/CharacterType.h \
 	../src/XPM.h \
 	../src/UniConversion.h \
 	Wrappers.h \
@@ -142,6 +143,7 @@ CellBuffer.o: \
 	../src/SparseVector.h \
 	../src/ChangeHistory.h \
 	../src/CellBuffer.h \
+	../src/UndoHistory.h \
 	../src/UniConversion.h
 ChangeHistory.o: \
 	../src/ChangeHistory.cxx \
@@ -274,7 +276,8 @@ Editor.o: \
 	../src/MarginView.h \
 	../src/EditView.h \
 	../src/Editor.h \
-	../src/ElapsedPeriod.h
+	../src/ElapsedPeriod.h \
+	../src/RunThreads.h
 EditView.o: \
 	../src/EditView.cxx \
 	../include/ScintillaTypes.h \
@@ -311,7 +314,8 @@ EditView.o: \
 	../src/EditModel.h \
 	../src/MarginView.h \
 	../src/EditView.h \
-	../src/ElapsedPeriod.h
+	../src/ElapsedPeriod.h \
+	../src/RunThreads.h
 Geometry.o: \
 	../src/Geometry.cxx \
 	../src/Geometry.h
@@ -478,6 +482,18 @@ Style.o: \
 	../src/Geometry.h \
 	../src/Platform.h \
 	../src/Style.h
+UndoHistory.o: \
+	../src/UndoHistory.cxx \
+	../include/ScintillaTypes.h \
+	../src/Debugging.h \
+	../src/Position.h \
+	../src/SplitVector.h \
+	../src/Partitioning.h \
+	../src/RunStyles.h \
+	../src/SparseVector.h \
+	../src/ChangeHistory.h \
+	../src/CellBuffer.h \
+	../src/UndoHistory.h
 UniConversion.o: \
 	../src/UniConversion.cxx \
 	../src/UniConversion.h

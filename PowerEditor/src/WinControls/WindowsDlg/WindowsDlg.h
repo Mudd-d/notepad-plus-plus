@@ -17,8 +17,14 @@
 
 #pragma once
 
-#include "SizeableDlg.h"
+#include <windows.h>
+
+#include <cstring>
+#include <vector>
+
 #include "ContextMenu.h"
+#include "SizeableDlg.h"
+#include "WinMgr.h"
 
 class DocTabView;
 class Buffer;
@@ -65,17 +71,34 @@ public :
 	void sortFileTypeDSC();
 	void sortFileSizeASC();
 	void sortFileSizeDSC();
-	void doRefresh(bool invalidate = false);
+	void sortDateTimeASC();
+	void sortDateTimeDSC();
+	void doRefresh();
+
+public:
+	// for message hook
+	static HHOOK _hMsgHook;
+	static HWND _hThisDlg;
+
+	static LRESULT CALLBACK getMsgProc(int code, WPARAM wParam, LPARAM lParam);
+	void initMessageHook() {
+		_hMsgHook = SetWindowsHookEx(WH_GETMESSAGE, getMsgProc, nullptr, GetCurrentThreadId());
+	}
+	void removeMessageHook() {
+		if (_hMsgHook) {
+			UnhookWindowsHookEx(_hMsgHook);
+			_hMsgHook = nullptr;
+		}
+	}
 
 protected :
 	intptr_t CALLBACK run_dlgProc(UINT message, WPARAM wParam, LPARAM lParam) override;
 	BOOL onInitDialog() override;
 	void onSize(UINT nType, int cx, int cy) override;
-	void onGetMinMaxInfo(MINMAXINFO* lpMMI) override;
 	LRESULT onWinMgr(WPARAM wp, LPARAM lp) override;
 	void destroy() override;
-	void updateColumnNames();
-	void fitColumnsToSize();
+	void updateColumnNames() const;
+	void fitColumnsToSize() const;
 	void resetSelection();
 	void doSave();
 	void doClose();
@@ -89,8 +112,8 @@ protected :
 
 	HWND _hList = nullptr;
 	static RECT _lastKnownLocation;
-	SIZE _szMinButton{};
-	SIZE _szMinListCtrl{};
+	SIZE _szMinButton = SIZEZERO;
+	SIZE _szMinListCtrl = SIZEZERO;
 	DocTabView* _pTab = nullptr;
 	std::vector<int> _idxMap;
 	int _currentColumn = -1;
@@ -105,9 +128,9 @@ private:
 class WindowsMenu
 {
 public:
-	WindowsMenu() {};
-	~WindowsMenu() {};
-	void init(HMENU hMainMenu); 
+	WindowsMenu() {}
+	~WindowsMenu() {}
+	void init(HMENU hMainMenu);
 	void initPopupMenu(HMENU hMenu, DocTabView *pTab);
 
 private:

@@ -109,7 +109,7 @@ protected:
 	std::string m_LineFeed;
 };
 
-LexerModule lmX12(SCLEX_X12, LexerX12::Factory, "x12");
+extern const LexerModule lmX12(SCLEX_X12, LexerX12::Factory, "x12");
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -241,7 +241,8 @@ LexerX12::Terminator LexerX12::InitialiseFromISA(IDocument *pAccess)
 		if (!memcmp (bufSegment, "GS", 2) || !memcmp(bufSegment, "IEA", 3))
 		{
 			m_SeparatorSegment.resize(posNextSegment - 105);
-			pAccess->GetCharRange(&m_SeparatorSegment.at(0), 105, posNextSegment - 105);
+			if (posNextSegment > 105)
+				pAccess->GetCharRange(&m_SeparatorSegment[0], 105, posNextSegment - 105);
 
 			// Is some of that CR+LF?
 			size_t nPos = m_SeparatorSegment.find_last_not_of("\r\n");

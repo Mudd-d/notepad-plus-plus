@@ -28,11 +28,11 @@ using namespace Lexilla;
 namespace {
 
 inline bool IsAWordChar(int ch) noexcept {
-	return (ch < 0x80) && (isalnum(ch) || ch == '.' || ch == '_');
+	return IsAlphaNumeric(ch) || ch == '.' || ch == '_';
 }
 
 inline bool IsAWordStart(int ch) noexcept {
-	return (ch < 0x80) && (isalnum(ch) || ch == '_');
+	return IsAlphaNumeric(ch) || ch == '_';
 }
 
 constexpr bool IsAnOperator(int ch) noexcept {
@@ -124,7 +124,7 @@ void ColouriseRDoc(Sci_PositionU startPos, Sci_Position length, int initStyle, W
 		dashCount = lineState >> 8;
 	}
 
-	for (; sc.More(); sc.Forward()) {
+	while (sc.More()) {
 		// Determine if the current state should terminate.
 		switch (sc.state) {
 		case SCE_R_OPERATOR:
@@ -272,6 +272,7 @@ void ColouriseRDoc(Sci_PositionU startPos, Sci_Position length, int initStyle, W
 			const int lineState = matchingDelimiter | (dashCount << 8);
 			styler.SetLineState(sc.currentLine, lineState);
 		}
+		sc.Forward();
 	}
 	sc.Complete();
 }
@@ -346,4 +347,4 @@ const char * const RWordLists[] = {
 
 }
 
-LexerModule lmR(SCLEX_R, ColouriseRDoc, "r", FoldRDoc, RWordLists);
+extern const LexerModule lmR(SCLEX_R, ColouriseRDoc, "r", FoldRDoc, RWordLists);

@@ -135,13 +135,16 @@ SectionGroup "Localization" localization
 		CopyFiles "$PLUGINSDIR\nppLocalization\indonesian.xml" "$INSTDIR\localization\indonesian.xml"
 	${MementoSectionEnd}
 	${MementoUnselectedSection} "Irish" irish
-		CopyFiles "$PLUGINSDIR\nppLocalization\iriish.xml" "$INSTDIR\localization\irish.xml"
+		CopyFiles "$PLUGINSDIR\nppLocalization\irish.xml" "$INSTDIR\localization\irish.xml"
 	${MementoSectionEnd}
 	${MementoUnselectedSection} "Italian" italian
 		CopyFiles "$PLUGINSDIR\nppLocalization\italian.xml" "$INSTDIR\localization\italian.xml"
 	${MementoSectionEnd}
 	${MementoUnselectedSection} "Japanese" japanese
 		CopyFiles "$PLUGINSDIR\nppLocalization\japanese.xml" "$INSTDIR\localization\japanese.xml"
+	${MementoSectionEnd}
+	${MementoUnselectedSection} "Kabyle" kabyle
+		CopyFiles "$PLUGINSDIR\nppLocalization\kabyle.xml" "$INSTDIR\localization\kabyle.xml"
 	${MementoSectionEnd}
 	${MementoUnselectedSection} "Kannada" kannada
 		CopyFiles "$PLUGINSDIR\nppLocalization\kannada.xml" "$INSTDIR\localization\kannada.xml"
@@ -151,6 +154,9 @@ SectionGroup "Localization" localization
 	${MementoSectionEnd}
 	${MementoUnselectedSection} "Korean" korean
 		CopyFiles "$PLUGINSDIR\nppLocalization\korean.xml" "$INSTDIR\localization\korean.xml"
+	${MementoSectionEnd}
+	${MementoUnselectedSection} "Lao" lao
+    CopyFiles "$PLUGINSDIR\nppLocalization\lao.xml" "$INSTDIR\localization\lao.xml"
 	${MementoSectionEnd}
 	${MementoUnselectedSection} "Kurdish" kurdish
 		CopyFiles "$PLUGINSDIR\nppLocalization\kurdish.xml" "$INSTDIR\localization\kurdish.xml"
@@ -176,6 +182,9 @@ SectionGroup "Localization" localization
 	${MementoUnselectedSection} "Malay" malay
 		CopyFiles "$PLUGINSDIR\nppLocalization\malay.xml" "$INSTDIR\localization\malay.xml"
 	${MementoSectionEnd}
+	${MementoUnselectedSection} "Malayalam" malayalam
+        CopyFiles "$PLUGINSDIR\nppLocalization\malayalam.xml" "$INSTDIR\localization\malayalam.xml"
+    ${MementoSectionEnd}
 	${MementoUnselectedSection} "Marathi" marathi
 		CopyFiles "$PLUGINSDIR\nppLocalization\marathi.xml" "$INSTDIR\localization\marathi.xml"
 	${MementoSectionEnd}
@@ -421,6 +430,9 @@ SectionGroup un.localization
 	Section un.japanese
 		Delete "$INSTDIR\localization\japanese.xml"
 	SectionEnd
+	Section un.kabyle
+		Delete "$INSTDIR\localization\kabyle.xml"
+	SectionEnd
 	Section un.kannada
 		Delete "$INSTDIR\localization\kannada.xml"
 	SectionEnd
@@ -429,6 +441,9 @@ SectionGroup un.localization
 	SectionEnd
 	Section un.korean
 		Delete "$INSTDIR\localization\korean.xml"
+	SectionEnd
+	Section un.lao
+    Delete "$INSTDIR\localization\lao.xml"
 	SectionEnd
 	Section un.kyrgyz
 		Delete "$INSTDIR\localization\kyrgyz.xml"
@@ -451,6 +466,9 @@ SectionGroup un.localization
 	Section un.malay
 		Delete "$INSTDIR\localization\malay.xml"
 	SectionEnd
+	Section un.malayalam
+        Delete "$INSTDIR\localization\malayalam.xml"
+    SectionEnd
 	Section un.marathi
 		Delete "$INSTDIR\localization\marathi.xml"
 	SectionEnd

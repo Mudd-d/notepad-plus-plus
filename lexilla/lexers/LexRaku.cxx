@@ -848,10 +848,7 @@ Sci_Position SCI_METHOD LexerRaku::WordListSet(int n, const char *wl) {
 	}
 	Sci_Position firstModification = -1;
 	if (wordListN) {
-		WordList wlNew;
-		wlNew.Set(wl);
-		if (*wordListN != wlNew) {
-			wordListN->Set(wl);
+		if (wordListN->Set(wl)) {
 			firstModification = 0;
 		}
 	}
@@ -1013,8 +1010,8 @@ bool LexerRaku::ProcessValidRegQlangStart(StyleContext &sc, Sci_Position length,
 Sci_Position LexerRaku::LengthToNonWordChar(StyleContext &sc, Sci_Position length,
 		char *s, const int size, Sci_Position offset) {
 	Sci_Position len = 0;
-	Sci_Position max_length = size < length ? size : length;
-	while (len <= max_length) {
+	Sci_Position max_length = (size - 1) < length ? (size - 1) : length;
+	while (len < max_length) {
 		const int ch = sc.GetRelativeCharacter(len + offset);
 		if (!IsWordChar(ch)) {
 			s[len] = '\0';
@@ -1023,7 +1020,7 @@ Sci_Position LexerRaku::LengthToNonWordChar(StyleContext &sc, Sci_Position lengt
 		s[len] = ch;
 		len++;
 	}
-	s[len + 1] = '\0';
+	s[len] = '\0';
 	return len;
 }
 
@@ -1427,7 +1424,7 @@ void SCI_METHOD LexerRaku::Lex(Sci_PositionU startPos, Sci_Position length, int 
 				}
 				const int state = sc.state;
 				sc.Forward();
-				char ch_delim = 0;
+				int ch_delim = 0;
 				if (setSpecialVar.Contains(sc.ch)
 						&& !setWord.Contains(sc.chNext)) {	// Process Special Var
 					ch_delim = -1;
@@ -1535,7 +1532,7 @@ void SCI_METHOD LexerRaku::Fold(Sci_PositionU startPos, Sci_Position length, int
 
 	// init char and style variables
 	char chNext = styler[startPos];
-	int stylePrev = styler.StyleAt(startPos - 1);
+	int stylePrev = startPos > 0 ? styler.StyleAt(startPos - 1) : 0;
 	int styleNext = styler.StyleAt(startPos);
 	int styleNextStartLine = styler.StyleAt(lineStartNext);
 	int visibleChars = 0;
@@ -1634,4 +1631,4 @@ void SCI_METHOD LexerRaku::Fold(Sci_PositionU startPos, Sci_Position length, int
  * --- Scintilla: LexerModule ---
  *----------------------------------------------------------------------------*/
 
-LexerModule lmRaku(SCLEX_RAKU, LexerRaku::LexerFactoryRaku, "raku", rakuWordLists);
+extern const LexerModule lmRaku(SCLEX_RAKU, LexerRaku::LexerFactoryRaku, "raku", rakuWordLists);

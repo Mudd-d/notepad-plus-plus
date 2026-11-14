@@ -2,12 +2,11 @@
 # Face.py - module for reading and parsing Scintilla.iface file
 # Implemented 2000 by Neil Hodgson neilh@scintilla.org
 # Released to the public domain.
-# Requires Python 2.7 or later
+# Requires Python 3.6 or later
 
 def sanitiseLine(line):
-	if line[-1:] == '\n':
-		line = line[:-1]
-	if line.find("##") != -1:
+	line = line.rstrip('\n')
+	if "##" in line:
 		line = line[:line.find("##")]
 	line = line.strip()
 	return line
@@ -73,7 +72,7 @@ class Face:
 		currentComment = []
 		currentCommentFinished = 0
 		file = open(name)
-		for line in file.readlines():
+		for line in file:
 			line = sanitiseLine(line)
 			if line:
 				if line[0] == "#":

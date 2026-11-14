@@ -9,6 +9,7 @@
 #include <cstdio>
 #include <cstdarg>
 
+#include <string>
 #include <string_view>
 #include <vector>
 #include <optional>
@@ -16,7 +17,9 @@
 
 #include "Debugging.h"
 
+#if defined(_WIN32)
 #define CATCH_CONFIG_WINDOWS_CRTDBG
+#endif
 #define CATCH_CONFIG_RUNNER
 #include "catch.hpp"
 

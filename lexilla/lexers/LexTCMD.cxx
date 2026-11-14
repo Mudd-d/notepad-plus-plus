@@ -166,7 +166,7 @@ static void ColouriseTCMDLine( char *lineBuffer, Sci_PositionU lengthLine, Sci_P
 		}
 		// Copy word from Line Buffer into Word Buffer
 		wbl = 0;
-		for (; offset < lengthLine && ( wbl < 260 ) && !isspacechar(lineBuffer[offset]); wbl++, offset++) {
+		for (; offset < lengthLine && ( wbl < 259 ) && !isspacechar(lineBuffer[offset]); wbl++, offset++) {
 			wordBuffer[wbl] = static_cast<char>(tolower(lineBuffer[offset]));
 		}
 		wordBuffer[wbl] = '\0';
@@ -504,4 +504,4 @@ static const char *const tcmdWordListDesc[] = {
 	0
 };
 
-LexerModule lmTCMD(SCLEX_TCMD, ColouriseTCMDDoc, "tcmd", FoldTCMDDoc, tcmdWordListDesc);
+extern const LexerModule lmTCMD(SCLEX_TCMD, ColouriseTCMDDoc, "tcmd", FoldTCMDDoc, tcmdWordListDesc);

@@ -16,8 +16,29 @@
 
 
 #include "ansiCharPanel.h"
+
+#include <windows.h>
+
+#include <cstdlib>
+#include <string>
+#include <string.h>
+
+#include <Scintilla.h>
+
+#include "DockingDlgInterface.h"
+#include "ListView.h"
+#include "Parameters.h"
 #include "ScintillaEditView.h"
+#include "ansiCharPanel_rc.h"
+#include "dockingResource.h"
+#include "dpiManagerV2.h"
 #include "localization.h"
+#include "menuCmdID.h"
+#include "resource.h"
+
+using namespace std;
+
+static constexpr std::array kDefaultColBaseWidths{ 6, 6, 10, 13, 14, 17 };
 
 void AnsiCharPanel::switchEncoding()
 {
@@ -33,34 +54,35 @@ intptr_t CALLBACK AnsiCharPanel::run_dlgProc(UINT message, WPARAM wParam, LPARAM
 		{
 			NppParameters& nppParam = NppParameters::getInstance();
 			NativeLangSpeaker *pNativeSpeaker = nppParam.getNativeLangSpeaker();
-			generic_string valStr = pNativeSpeaker->getAttrNameStr(TEXT("Value"), "AsciiInsertion", "ColumnVal");
-			generic_string hexStr = pNativeSpeaker->getAttrNameStr(TEXT("Hex"), "AsciiInsertion", "ColumnHex");
-			generic_string charStr = pNativeSpeaker->getAttrNameStr(TEXT("Character"), "AsciiInsertion", "ColumnChar");
-			generic_string htmlNameStr = pNativeSpeaker->getAttrNameStr(L"HTML Name", "AsciiInsertion", "ColumnHtmlName");
-			generic_string htmlNumberStr = pNativeSpeaker->getAttrNameStr(L"HTML Decimal", "AsciiInsertion", "ColumnHtmlNumber");
-			generic_string htmlHexNbStr = pNativeSpeaker->getAttrNameStr(L"HTML Hexadecimal", "AsciiInsertion", "ColumnHtmlHexNb");
+			wstring valStr = pNativeSpeaker->getAttrNameStr(L"Value", "AsciiInsertion", "ColumnVal");
+			wstring hexStr = pNativeSpeaker->getAttrNameStr(L"Hex", "AsciiInsertion", "ColumnHex");
+			wstring charStr = pNativeSpeaker->getAttrNameStr(L"Character", "AsciiInsertion", "ColumnChar");
+			wstring htmlNameStr = pNativeSpeaker->getAttrNameStr(L"HTML Name", "AsciiInsertion", "ColumnHtmlName");
+			wstring htmlNumberStr = pNativeSpeaker->getAttrNameStr(L"HTML Decimal", "AsciiInsertion", "ColumnHtmlNumber");
+			wstring htmlHexNbStr = pNativeSpeaker->getAttrNameStr(L"HTML Hexadecimal", "AsciiInsertion", "ColumnHtmlHexNb");
 
-			_listView.addColumn(columnInfo(valStr, nppParam._dpiManager.scaleX(45)));
-			_listView.addColumn(columnInfo(hexStr, nppParam._dpiManager.scaleX(45)));
-			_listView.addColumn(columnInfo(charStr, nppParam._dpiManager.scaleX(70)));
-			_listView.addColumn(columnInfo(htmlNameStr, nppParam._dpiManager.scaleX(90)));
-			_listView.addColumn(columnInfo(htmlNumberStr, nppParam._dpiManager.scaleX(100)));
-			_listView.addColumn(columnInfo(htmlHexNbStr, nppParam._dpiManager.scaleX(120)));
+			const auto avgWidth = DPIManagerV2::getFontAvgAlphaWidth(_hSelf);
 
-			_listView.init(_hInst, _hSelf);
+			_listView.addColumn(columnInfo(valStr, avgWidth * kDefaultColBaseWidths[0]));
+			_listView.addColumn(columnInfo(hexStr, avgWidth * kDefaultColBaseWidths[1]));
+			_listView.addColumn(columnInfo(charStr, avgWidth * kDefaultColBaseWidths[2]));
+			_listView.addColumn(columnInfo(htmlNameStr, avgWidth * kDefaultColBaseWidths[3]));
+			_listView.addColumn(columnInfo(htmlNumberStr, avgWidth * kDefaultColBaseWidths[4]));
+			_listView.addColumn(columnInfo(htmlHexNbStr, avgWidth * kDefaultColBaseWidths[5]));
+
+			_listView.init(_hInst, _hSelf, IDC_LIST_ANSICHAR);
+			setFontForChild(_listView.getHSelf());
+
 			int codepage = (*_ppEditView)->getCurrentBuffer()->getEncoding();
 			_listView.setValues(codepage==-1?0:codepage);
 			_listView.display();
-
-			NppDarkMode::autoSubclassAndThemeChildControls(_hSelf);
-			NppDarkMode::autoSubclassAndThemeWindowNotify(_hSelf);
 
 			return TRUE;
 		}
 
 		case NPPM_INTERNAL_REFRESHDARKMODE:
 		{
-			NppDarkMode::autoThemeChildControls(_hSelf);
+			_listView.setDarkTheme();
 			return TRUE;
 		}
 
@@ -77,7 +99,7 @@ intptr_t CALLBACK AnsiCharPanel::run_dlgProc(UINT message, WPARAM wParam, LPARAM
 
 				case NM_DBLCLK:
 				{
-					LPNMITEMACTIVATE lpnmitem = (LPNMITEMACTIVATE) lParam;
+					const auto lpnmitem = reinterpret_cast<LPNMITEMACTIVATE>(lParam);
 					LVHITTESTINFO pInfo{};
 					pInfo.pt = lpnmitem->ptAction;
 					ListView_SubItemHitTest(_listView.getHSelf(), &pInfo);
@@ -86,7 +108,7 @@ intptr_t CALLBACK AnsiCharPanel::run_dlgProc(UINT message, WPARAM wParam, LPARAM
 					int j = pInfo.iSubItem;
 					wchar_t buffer[10]{};
 					LVITEM item{};
-					item.mask = LVIF_TEXT | LVIF_PARAM;
+					item.mask = LVIF_TEXT;
 					item.iItem = i;
 					item.iSubItem = j;
 					item.cchTextMax = 10;
@@ -106,7 +128,7 @@ intptr_t CALLBACK AnsiCharPanel::run_dlgProc(UINT message, WPARAM wParam, LPARAM
 
 				case LVN_KEYDOWN:
 				{
-					switch (((LPNMLVKEYDOWN)lParam)->wVKey)
+					switch (reinterpret_cast<LPNMLVKEYDOWN>(lParam)->wVKey)
 					{
 						case VK_RETURN:
 						{
@@ -144,6 +166,21 @@ intptr_t CALLBACK AnsiCharPanel::run_dlgProc(UINT message, WPARAM wParam, LPARAM
 	return DockingDlgInterface::run_dlgProc(message, wParam, lParam);
 }
 
+void AnsiCharPanel::onDpiChanged(UINT prevDpi)
+{
+	HWND hList = _listView.getHSelf();
+
+	setFontForChild(hList);
+
+	const auto nCol = static_cast<int>(kDefaultColBaseWidths.size());
+	for (int i = 0; i < nCol; ++i)
+	{
+		const int width = ListView_GetColumnWidth(hList, i);
+		const UINT widthDpi = _dpiManager.scale(width, _dpiManager.getDpi(), prevDpi);
+		ListView_SetColumnWidth(hList, i, widthDpi);
+	}
+}
+
 void AnsiCharPanel::insertChar(unsigned char char2insert) const
 {
 	char charStr[2]{};
@@ -174,7 +211,7 @@ void AnsiCharPanel::insertChar(unsigned char char2insert) const
 	(*_ppEditView)->execute(SCI_REPLACESEL, 0, reinterpret_cast<LPARAM>(""));
 	size_t len = (char2insert < 128) ? 1 : strlen(multiByteStr);
 	(*_ppEditView)->execute(SCI_ADDTEXT, len, reinterpret_cast<LPARAM>(multiByteStr));
-	(*_ppEditView)->getFocus();
+	(*_ppEditView)->grabFocus();
 }
 
 void AnsiCharPanel::insertString(LPWSTR string2insert) const
@@ -201,5 +238,5 @@ void AnsiCharPanel::insertString(LPWSTR string2insert) const
 	(*_ppEditView)->execute(SCI_REPLACESEL, 0, reinterpret_cast<LPARAM>(""));
 	size_t len = strlen(multiByteStr);
 	(*_ppEditView)->execute(SCI_ADDTEXT, len, reinterpret_cast<LPARAM>(multiByteStr));
-	(*_ppEditView)->getFocus();
+	(*_ppEditView)->grabFocus();
 }

@@ -35,13 +35,13 @@ def depunctuate(s):
 
 symbols = {}
 with open(incFileName, "rt") as incFile:
-	for line in incFile.readlines():
+	for line in incFile:
 		if line.startswith("#define"):
 			identifier = line.split()[1]
 			symbols[identifier] = 0
 
 with open(docFileName, "rt") as docFile:
-	for line in docFile.readlines():
+	for line in docFile:
 		for word in depunctuate(line).split():
 			if word in symbols.keys():
 				symbols[word] = 1
@@ -137,7 +137,7 @@ def checkDocumentation():
 	#<a class="message" href="#SCI_SETLAYOUTCACHE">SCI_SETLAYOUTCACHE(int cacheMode)</a><br />
 	dirPattern = re.compile(r'<a class="message" href="#([A-Z0-9_]+)">([A-Z][A-Za-z0-9_() *&;,\n]+)</a>')
 	for api, sig in re.findall(dirPattern, docs):
-		sigApi = re.split('\W+', sig)[0]
+		sigApi = re.split(r'\W+', sig)[0]
 		sigFlat = flattenSpaces(sig)
 		sigFlat = sigFlat.replace('colouralpha ', 'xxxx ')	# Temporary to avoid next line
 		sigFlat = sigFlat.replace('alpha ', 'int ')
@@ -176,7 +176,7 @@ def checkDocumentation():
 		sigFlat = sigFlat.replace(' NUL-terminated', '')
 		sigFlat = sigFlat.rstrip()
 		#~ sigFlat = sigFlat.replace(' NUL-terminated', '')
-		sigApi = re.split('\W+', sigFlat)[0]
+		sigApi = re.split(r'\W+', sigFlat)[0]
 		#~ print(sigFlat, ";;", sig, ";;", api)
 		if '(' in sigFlat or api.startswith("SCI_"):
 			try:

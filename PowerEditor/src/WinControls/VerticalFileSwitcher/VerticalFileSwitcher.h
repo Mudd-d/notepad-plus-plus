@@ -17,101 +17,116 @@
 
 #pragma once
 
+#include <windows.h>
+
+#include <shlwapi.h>
+
+#include <algorithm>
+#include <string>
+#include <vector>
+
+#include "Buffer.h"
 #include "DockingDlgInterface.h"
+#include "TaskListDlg.h"
 #include "VerticalFileSwitcher_rc.h"
 #include "VerticalFileSwitcherListView.h"
 
-#define FS_PROJECTPANELTITLE		TEXT("Document List")
+#define FS_PROJECTPANELTITLE		L"Document List"
+
+enum class SortDirection
+{
+	NONE = -1,
+	UP,
+	DOWN
+};
 
 struct sortCompareData {
   HWND hListView = nullptr;
   int columnIndex = 0;
-  int sortDirection = 0;
+  SortDirection sortDirection = SortDirection::UP;
 };
-
-LRESULT run_listViewProc(WNDPROC oldEditProc, HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
 
 class VerticalFileSwitcher : public DockingDlgInterface {
 public:
-	VerticalFileSwitcher(): DockingDlgInterface(IDD_DOCLIST) {};
+	VerticalFileSwitcher() : DockingDlgInterface(IDD_DOCLIST) {}
 
 	void init(HINSTANCE hInst, HWND hPere, HIMAGELIST hImaLst) {
 		DockingDlgInterface::init(hInst, hPere);
 		_hImaLst = hImaLst;
-	};
+	}
 
-	virtual void display(bool toShow = true) const; 
+	void display(bool toShow = true) const override;
 
-    void setParent(HWND parent2set){
-        _hParent = parent2set;
-    };
-	
+	void setParent(HWND parent2set){
+		_hParent = parent2set;
+	}
+
 	//Activate document in scintilla by using the internal index
 	void activateDoc(TaskLstFnStatus *tlfs) const;
 
 	void closeDoc(TaskLstFnStatus *tlfs) const;
 
-	int newItem(BufferID bufferID, int iView){
+	int newItem(BufferID bufferID, int iView) {
 		return _fileListView.newItem(bufferID, iView);
-	};
+	}
 
-	int closeItem(BufferID bufferID, int iView){
+	int closeItem(BufferID bufferID, int iView) {
 		return _fileListView.closeItem(bufferID, iView);
-	};
+	}
 
 	void activateItem(BufferID bufferID, int iView) {
 		_fileListView.activateItem(bufferID, iView);
-	};
+	}
 
 	void setItemIconStatus(BufferID bufferID) {
 		_fileListView.setItemIconStatus(bufferID) ;
-	};
+	}
 
 	void setItemColor(BufferID bufferID) {
 		_fileListView.setItemColor(bufferID);
-	};
+	}
 
-	generic_string getFullFilePath(size_t i) const {
+	std::wstring getFullFilePath(size_t i) const {
 		return _fileListView.getFullFilePath(i);
-	};
+	}
 
-	int setHeaderOrder(int columnIndex);
+	SortDirection setHeaderOrder(int columnIndex);
 	void updateHeaderArrow();
 
 	int nbSelectedFiles() const {
 		return _fileListView.nbSelectedFiles();
-	};
+	}
 
 	std::vector<BufferViewInfo> getSelectedFiles(bool reverse = false) const {
 		return _fileListView.getSelectedFiles(reverse);
-	};
+	}
 
 	void startColumnSort();
 
 	void reload(){
 		_fileListView.reload();
 		startColumnSort();
-	};
+	}
 
 	void updateTabOrder(){
-		if (_lastSortingDirection == SORT_DIRECTION_NONE) {
+		if (_lastSortingDirection == SortDirection::NONE) {
 			_fileListView.reload();
 		}
-	};
+	}
 
-	virtual void setBackgroundColor(COLORREF bgColour) {
+	void setBackgroundColor(COLORREF bgColour) override {
 		_fileListView.setBackgroundColor(bgColour);
 		
 		auto r = GetRValue(bgColour);
 		auto g = GetGValue(bgColour);
 		auto b = GetBValue(bgColour);
 
-		constexpr int luminenceIncrementBy = 333; // 33.3 %
+		static constexpr int luminenceIncrementBy = 333; // 33.3 %
 
 		// main color is blue
 		// but difference must be high
 		// can have similar blue color as header
-		constexpr int difference = 12;
+		static constexpr int difference = 12;
 		const auto bAdjusted = static_cast<BYTE>(std::max<int>(0, static_cast<int>(b) - difference));
 		if (bAdjusted > r && bAdjusted > g)
 		{
@@ -127,32 +142,32 @@ public:
 		{
 			_bgColor = ::ColorAdjustLuma(bgColour, luminenceIncrementBy, TRUE);
 		}
-	};
+	}
 
-	virtual void setForegroundColor(COLORREF fgColour) {
+	void setForegroundColor(COLORREF fgColour) override {
 		_fileListView.setForegroundColor(fgColour);
-    };
+	}
 protected:
-	HMENU _hGlobalMenu = NULL;
-	virtual intptr_t CALLBACK run_dlgProc(UINT message, WPARAM wParam, LPARAM lParam);
+	HMENU _hGlobalMenu = nullptr;
+	intptr_t CALLBACK run_dlgProc(UINT message, WPARAM wParam, LPARAM lParam) override;
 	void initPopupMenus();
 	void popupMenuCmd(int cmdID);
 
-	static LRESULT CALLBACK listViewStaticProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {
-		const auto dlg = (VerticalFileSwitcher*)(::GetWindowLongPtr(hwnd, GWLP_USERDATA));
-		return (run_listViewProc(dlg->_defaultListViewProc, hwnd, message, wParam, lParam));
-	};
 private:
 	bool colHeaderRClick = false;
 	int _lastSortingColumn = 0;
-	int _lastSortingDirection = SORT_DIRECTION_NONE;
+	SortDirection _lastSortingDirection = SortDirection::NONE;
 	VerticalFileSwitcherListView _fileListView;
 	HIMAGELIST _hImaLst = nullptr;
-	WNDPROC _defaultListViewProc = nullptr;
+
+	using DockingDlgInterface::init;
 
 	static COLORREF _bgColor;
-	static const UINT_PTR _fileSwitcherNotifySubclassID = 42;
 	static LRESULT listViewNotifyCustomDraw(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 	static LRESULT CALLBACK FileSwitcherNotifySubclass(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData);
-	void autoSubclassWindowNotify(HWND hParent);
+	static LRESULT CALLBACK ListViewParentNotifyProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData);
+
+	void onDpiChanged([[maybe_unused]] UINT prevDpi) override {
+		setFontForChild(_fileListView.getHSelf());
+	}
 };

@@ -16,9 +16,19 @@
 
 
 #include "FindCharsInRange.h"
-#include "findCharsInRange_rc.h"
+
+#include <windows.h>
+
+#include <cstdint>
+
+#include <Scintilla.h>
+
+#include "NppConstants.h"
+#include "NppDarkMode.h"
 #include "Parameters.h"
+#include "findCharsInRange_rc.h"
 #include "localization.h"
+#include "resource.h"
 
 intptr_t CALLBACK FindCharsInRangeDlg::run_dlgProc(UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -46,12 +56,12 @@ intptr_t CALLBACK FindCharsInRangeDlg::run_dlgProc(UINT message, WPARAM wParam, 
 
 		case WM_CTLCOLOREDIT:
 		{
-			return NppDarkMode::onCtlColorSofter(reinterpret_cast<HDC>(wParam));
+			return NppDarkMode::onCtlColorCtrl(reinterpret_cast<HDC>(wParam));
 		}
 
 		case WM_CTLCOLORDLG:
 		{
-			return NppDarkMode::onCtlColorDarker(reinterpret_cast<HDC>(wParam));
+			return NppDarkMode::onCtlColorDlg(reinterpret_cast<HDC>(wParam));
 		}
 
 		case WM_CTLCOLORSTATIC:
@@ -63,9 +73,9 @@ intptr_t CALLBACK FindCharsInRangeDlg::run_dlgProc(UINT message, WPARAM wParam, 
 			if (dlgCtrlID == IDC_STATIC)
 			{
 				const bool isTextEnabled = isCheckedOrNot(IDC_MYRANGE_RADIO);
-				return NppDarkMode::onCtlColorDarkerBGStaticText(hdcStatic, isTextEnabled);
+				return NppDarkMode::onCtlColorDlgStaticText(hdcStatic, isTextEnabled);
 			}
-			return NppDarkMode::onCtlColorDarker(hdcStatic);
+			return NppDarkMode::onCtlColorDlg(hdcStatic);
 		}
 
 		case WM_PRINTCLIENT:
@@ -77,27 +87,23 @@ intptr_t CALLBACK FindCharsInRangeDlg::run_dlgProc(UINT message, WPARAM wParam, 
 			break;
 		}
 
-		case WM_ERASEBKGND:
-		{
-			if (NppDarkMode::isEnabled())
-			{
-				RECT rc{};
-				getClientRect(rc);
-				::FillRect(reinterpret_cast<HDC>(wParam), &rc, NppDarkMode::getDarkerBackgroundBrush());
-				return TRUE;
-			}
-			break;
-		}
-
 		case NPPM_INTERNAL_REFRESHDARKMODE:
 		{
 			NppDarkMode::autoThemeChildControls(_hSelf);
 			return TRUE;
 		}
 
+		case WM_DPICHANGED:
+		{
+			_dpiManager.setDpiWP(wParam);
+			setPositionDpi(lParam);
+
+			return TRUE;
+		}
+
 		case WM_COMMAND:
 		{
-			switch (wParam)
+			switch (LOWORD(wParam))
 			{
 				case IDC_NONASCCI_RADIO:
 				case IDC_ASCCI_RADIO:
@@ -134,8 +140,8 @@ intptr_t CALLBACK FindCharsInRangeDlg::run_dlgProc(UINT message, WPARAM wParam, 
 						//STOP!
 						NppParameters::getInstance().getNativeLangSpeaker()->messageBox("FindCharRangeValueError",
 							_hSelf,
-							TEXT("You should type between 0 and 255."),
-							TEXT("Range Value problem"),
+							L"You should type between 0 and 255.",
+							L"Range Value problem",
 							MB_OK);
 						return TRUE;
 					}
@@ -227,6 +233,7 @@ bool FindCharsInRangeDlg::getRangeFromUI(unsigned char & startRange, unsigned ch
 		endRange = 255;
 		return true;
 	}
+
 	if (isCheckedOrNot(IDC_ASCCI_RADIO))
 	{
 		startRange = 0;

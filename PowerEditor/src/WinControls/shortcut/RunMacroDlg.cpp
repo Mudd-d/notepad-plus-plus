@@ -18,20 +18,31 @@
 
 
 #include "RunMacroDlg.h"
-#include "ScintillaEditView.h"
+
+#include <windows.h>
+
+#include <algorithm>
+#include <vector>
+
+#include "Common.h"
+#include "NppDarkMode.h"
+#include "Parameters.h"
+#include "shortcut.h"
 #include "Notepad_plus_msgs.h"
+#include "resource.h"
+#include "RunMacroDlg_rc.h"
 
 void RunMacroDlg::initMacroList()
 {
 	if (!isCreated()) return;
 
 	NppParameters& nppParam = NppParameters::getInstance();
-	std::vector<MacroShortcut> & macroList = nppParam.getMacroList();
+	const std::vector<MacroShortcut>& macroList = nppParam.getMacroList();
 
 	::SendDlgItemMessage(_hSelf, IDC_MACRO_COMBO, CB_RESETCONTENT, 0, 0);
 
 	if (static_cast<MacroStatus>(::SendMessage(_hParent, NPPM_GETCURRENTMACROSTATUS, 0, 0)) == MacroStatus::RecordingStopped)
-		::SendDlgItemMessage(_hSelf, IDC_MACRO_COMBO, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(TEXT("Current recorded macro")));
+		::SendDlgItemMessage(_hSelf, IDC_MACRO_COMBO, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Current recorded macro"));
 
 	for (size_t i = 0, len = macroList.size(); i < len ; ++i)
 		::SendDlgItemMessage(_hSelf, IDC_MACRO_COMBO, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(string2wstring(macroList[i].getName(), CP_UTF8).c_str()));
@@ -60,7 +71,7 @@ intptr_t CALLBACK RunMacroDlg::run_dlgProc(UINT message, WPARAM wParam, LPARAM l
 
 		case WM_CTLCOLOREDIT:
 		{
-			return NppDarkMode::onCtlColorSofter(reinterpret_cast<HDC>(wParam));
+			return NppDarkMode::onCtlColorCtrl(reinterpret_cast<HDC>(wParam));
 		}
 
 		case WM_CTLCOLORLISTBOX:
@@ -70,7 +81,7 @@ intptr_t CALLBACK RunMacroDlg::run_dlgProc(UINT message, WPARAM wParam, LPARAM l
 
 		case WM_CTLCOLORDLG:
 		{
-			return NppDarkMode::onCtlColorDarker(reinterpret_cast<HDC>(wParam));
+			return NppDarkMode::onCtlColorDlg(reinterpret_cast<HDC>(wParam));
 		}
 
 		case WM_CTLCOLORSTATIC:
@@ -83,9 +94,9 @@ intptr_t CALLBACK RunMacroDlg::run_dlgProc(UINT message, WPARAM wParam, LPARAM l
 			if (isStaticText)
 			{
 				const bool isTextEnabled = isCheckedOrNot(IDC_M_RUN_MULTI);
-				return NppDarkMode::onCtlColorDarkerBGStaticText(hdcStatic, isTextEnabled);
+				return NppDarkMode::onCtlColorDlgStaticText(hdcStatic, isTextEnabled);
 			}
-			return NppDarkMode::onCtlColorDarker(hdcStatic);
+			return NppDarkMode::onCtlColorDlg(hdcStatic);
 		}
 
 		case WM_PRINTCLIENT:
@@ -105,7 +116,7 @@ intptr_t CALLBACK RunMacroDlg::run_dlgProc(UINT message, WPARAM wParam, LPARAM l
 
 		case WM_CHANGEUISTATE:
 		{
-			if (NppDarkMode::isEnabled() && !NppDarkMode::isWindows11())
+			if (NppDarkMode::isEnabled())
 			{
 				redrawDlgItem(IDC_MACRO2RUN_STATIC);
 			}
@@ -113,15 +124,23 @@ intptr_t CALLBACK RunMacroDlg::run_dlgProc(UINT message, WPARAM wParam, LPARAM l
 			return FALSE;
 		}
 
+		case WM_DPICHANGED:
+		{
+			_dpiManager.setDpiWP(wParam);
+			setPositionDpi(lParam);
+
+			return TRUE;
+		}
+
 		case WM_COMMAND:
 		{
-			switch (wParam)
+			switch (LOWORD(wParam))
 			{
 				case IDC_M_RUN_MULTI:
 				case IDC_M_RUN_EOF:
 				{
-					const bool isMulti = (wParam == IDC_M_RUN_MULTI);
-					if (isMulti)
+					const bool isRunMulti = (wParam == IDC_M_RUN_MULTI);
+					if (isRunMulti)
 					{
 						::EnableWindow(::GetDlgItem(_hSelf, IDC_M_RUN_TIMES), TRUE);
 						_times = ::GetDlgItemInt(_hSelf, IDC_M_RUN_TIMES, NULL, FALSE);
@@ -147,47 +166,36 @@ intptr_t CALLBACK RunMacroDlg::run_dlgProc(UINT message, WPARAM wParam, LPARAM l
 					return TRUE;
 				}
 
-				default:
+				case IDC_MACRO_COMBO:
 				{
-					switch (LOWORD(wParam))
+					if (HIWORD(wParam) == CBN_SELCHANGE)
 					{
-						case IDC_MACRO_COMBO:
+						_macroIndex = static_cast<int>(::SendDlgItemMessage(_hSelf, IDC_MACRO_COMBO, CB_GETCURSEL, 0, 0));
+						return TRUE;
+					}
+					return FALSE;
+				}
+
+				case IDC_M_RUN_TIMES:
+				{
+					switch (HIWORD(wParam))
+					{
+						case EN_KILLFOCUS:
 						{
-							if (HIWORD(wParam) == CBN_SELCHANGE)
+							const int times = ::GetDlgItemInt(_hSelf, IDC_M_RUN_TIMES, nullptr, FALSE);
+							if (times < 1)
 							{
-								_macroIndex = static_cast<int32_t>(::SendDlgItemMessage(_hSelf, IDC_MACRO_COMBO, CB_GETCURSEL, 0, 0));
+								::SetDlgItemInt(_hSelf, IDC_M_RUN_TIMES, 1, FALSE);
 								return TRUE;
 							}
+
 							return FALSE;
 						}
 
-						case IDC_M_RUN_TIMES:
+						case EN_CHANGE:
 						{
-							switch (HIWORD(wParam))
-							{
-								case EN_KILLFOCUS:
-								{
-									const int times = ::GetDlgItemInt(_hSelf, IDC_M_RUN_TIMES, nullptr, FALSE);
-									if (times < 1)
-									{
-										::SetDlgItemInt(_hSelf, IDC_M_RUN_TIMES, 1, FALSE);
-										return TRUE;
-									}
-
-									return FALSE;
-								}
-
-								case EN_CHANGE:
-								{
-									_times = std::max<int>(::GetDlgItemInt(_hSelf, IDC_M_RUN_TIMES, nullptr, FALSE), 1);
-									return TRUE;
-								}
-
-								default:
-								{
-									return FALSE;
-								}
-							}
+							_times = std::max<int>(::GetDlgItemInt(_hSelf, IDC_M_RUN_TIMES, nullptr, FALSE), 1);
+							return TRUE;
 						}
 
 						default:
@@ -195,6 +203,11 @@ intptr_t CALLBACK RunMacroDlg::run_dlgProc(UINT message, WPARAM wParam, LPARAM l
 							return FALSE;
 						}
 					}
+				}
+
+				default:
+				{
+					return FALSE;
 				}
 			}
 		}

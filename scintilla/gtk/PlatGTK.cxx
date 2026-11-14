@@ -5,10 +5,12 @@
 
 #include <cstddef>
 #include <cstdlib>
+#include <cstdint>
 #include <cstring>
 #include <cstdio>
 #include <cmath>
 
+#include <utility>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -26,6 +28,9 @@
 #if defined(GDK_WINDOWING_WAYLAND)
 #include <gdk/gdkwayland.h>
 #endif
+#if GTK_CHECK_VERSION(3, 10, 0)
+#include <cairo/cairo-gobject.h>
+#endif
 
 #include "ScintillaTypes.h"
 #include "ScintillaMessages.h"
@@ -36,6 +41,7 @@
 
 #include "Scintilla.h"
 #include "ScintillaWidget.h"
+#include "CharacterType.h"
 #include "XPM.h"
 #include "UniConversion.h"
 
@@ -99,6 +105,8 @@ public:
 			pango_font_description_set_size(fd.get(), pango_units_from_double(fp.size));
 			pango_font_description_set_weight(fd.get(), static_cast<PangoWeight>(fp.weight));
 			pango_font_description_set_style(fd.get(), fp.italic ? PANGO_STYLE_ITALIC : PANGO_STYLE_NORMAL);
+			pango_font_description_set_stretch(fd.get(),
+				static_cast<PangoStretch>(static_cast<int>(fp.stretch)-1));
 		}
 	}
 	~FontHandle() override = default;
@@ -1085,6 +1093,27 @@ void SurfaceImpl::MeasureWidthsUTF8(const Font *font_, std::string_view text, XY
 		}
 		while (!iti.finished) {
 			iti.Next();
+			if (iti.curIndex < i) {
+				// Backwards movement indicater bidirectional.
+				// Divide into ASCII prefix and non-ASCII suffix as this is common case
+				// and produces accurate positions for the ASCII prefix.
+				size_t lenASCII=0;
+				while (lenASCII<text.length() && IsASCII(text[lenASCII])) {
+					lenASCII++;
+				}
+				const std::string_view asciiPrefix = text.substr(0, lenASCII);
+				const std::string_view bidiSuffix = text.substr(lenASCII);
+				// Recurse for ASCII prefix.
+				MeasureWidthsUTF8(font_, asciiPrefix, positions);
+				// Measure the whole bidiSuffix and spread its width evenly
+				const XYPOSITION endASCII = positions[lenASCII-1];
+				const XYPOSITION widthBidi = WidthText(font_, bidiSuffix);
+				const XYPOSITION widthByteBidi = widthBidi / bidiSuffix.length();
+				for (size_t bidiPos=0; bidiPos<bidiSuffix.length(); bidiPos++) {
+					positions[bidiPos+lenASCII] = endASCII + widthByteBidi * (bidiPos + 1);
+				}
+				return;
+			}
 			const int places = iti.curIndex - i;
 			while (i < iti.curIndex) {
 				// Evenly distribute space among bytes of this cluster.
@@ -1321,7 +1350,13 @@ void Window::SetCursor(Cursor curs) {
 		gdkCurs = gdk_cursor_new_for_display(pdisplay, GDK_HAND2);
 		break;
 	case Cursor::reverseArrow:
+#ifdef G_OS_WIN32
+		// GDK_RIGHT_PTR is scaled incorrectly under Windows with HiDPI screens (GTK 3.24);
+		// GDK_HAND2 is mapped to a native Windows cursor by GTK
+		gdkCurs = gdk_cursor_new_for_display(pdisplay, GDK_HAND2);
+#else
 		gdkCurs = gdk_cursor_new_for_display(pdisplay, GDK_RIGHT_PTR);
+#endif
 		break;
 	default:
 		gdkCurs = gdk_cursor_new_for_display(pdisplay, GDK_LEFT_PTR);
@@ -1331,7 +1366,8 @@ void Window::SetCursor(Cursor curs) {
 
 	if (WindowFromWidget(PWidget(wid)))
 		gdk_window_set_cursor(WindowFromWidget(PWidget(wid)), gdkCurs);
-	UnRefCursor(gdkCurs);
+	if (gdkCurs)
+		UnRefCursor(gdkCurs);
 }
 
 /* Returns rectangle of monitor pt is on, both rect and pt are in Window's
@@ -1400,6 +1436,7 @@ class ListBoxX : public ListBox {
 #if GTK_CHECK_VERSION(3,0,0)
 	std::unique_ptr<GtkCssProvider, GObjectReleaser> cssProvider;
 #endif
+	float imageScale;
 public:
 	IListBoxDelegate *delegate;
 
@@ -1407,7 +1444,7 @@ public:
 		pixhash(nullptr), pixbuf_renderer(nullptr),
 		renderer(nullptr),
 		desiredVisibleRows(5), maxItemCharacters(0),
-		aveCharWidth(1),
+		aveCharWidth(1), imageScale(1.0),
 		delegate(nullptr) {
 	}
 	// Deleted so ListBoxX objects can not be copied.
@@ -1641,7 +1678,13 @@ void ListBoxX::Create(Window &parent, int, Point, int, bool, Technology) {
 
 	/* Tree and its model */
 	GtkListStore *store =
-		gtk_list_store_new(N_COLUMNS, GDK_TYPE_PIXBUF, G_TYPE_STRING);
+		gtk_list_store_new(N_COLUMNS,
+#if GTK_CHECK_VERSION(3, 10, 0)
+		CAIRO_GOBJECT_TYPE_SURFACE,
+#else
+		GDK_TYPE_PIXBUF,
+#endif
+		G_TYPE_STRING);
 
 	list = gtk_tree_view_new_with_model(GTK_TREE_MODEL(store));
 	g_signal_connect(G_OBJECT(list), "style-set", G_CALLBACK(StyleSet), nullptr);
@@ -1669,7 +1712,13 @@ void ListBoxX::Create(Window &parent, int, Point, int, bool, Technology) {
 	gtk_cell_renderer_set_fixed_size(pixbuf_renderer, 0, -1);
 	gtk_tree_view_column_pack_start(column, pixbuf_renderer, FALSE);
 	gtk_tree_view_column_add_attribute(column, pixbuf_renderer,
-					   "pixbuf", PIXBUF_COLUMN);
+#if GTK_CHECK_VERSION(3, 10, 0)
+					   "surface",
+#else
+					   "pixbuf",
+#endif
+					   PIXBUF_COLUMN);
+
 
 	renderer = gtk_cell_renderer_text_new();
 	gtk_cell_renderer_text_set_fixed_height_from_font(GTK_CELL_RENDERER_TEXT(renderer), 1);
@@ -1883,11 +1932,20 @@ void ListBoxX::Append(char *s, int type) {
 		if (nullptr == list_image->pixbuf)
 			init_pixmap(list_image);
 		if (list_image->pixbuf) {
+#if GTK_CHECK_VERSION(3, 10, 0)
+			cairo_surface_t *surface = gdk_cairo_surface_create_from_pixbuf(list_image->pixbuf, imageScale, nullptr);
+			gtk_list_store_set(GTK_LIST_STORE(store), &iter,
+					   PIXBUF_COLUMN, surface,
+					   TEXT_COLUMN, s, -1);
+
+			const gint pixbuf_width = gdk_pixbuf_get_width(list_image->pixbuf) / imageScale;
+#else
 			gtk_list_store_set(GTK_LIST_STORE(store), &iter,
 					   PIXBUF_COLUMN, list_image->pixbuf,
 					   TEXT_COLUMN, s, -1);
 
 			const gint pixbuf_width = gdk_pixbuf_get_width(list_image->pixbuf);
+#endif
 			gint renderer_height, renderer_width;
 			gtk_cell_renderer_get_fixed_size(pixbuf_renderer,
 							 &renderer_width, &renderer_height);
@@ -2093,7 +2151,8 @@ void ListBoxX::SetList(const char *listText, char separator, char typesep) {
 	}
 }
 
-void ListBoxX::SetOptions(ListOptions) {
+void ListBoxX::SetOptions(ListOptions options_) {
+	imageScale = options_.imageScale;
 }
 
 Menu::Menu() noexcept : mid(nullptr) {}
@@ -2149,7 +2208,7 @@ ColourRGBA Platform::Chrome() {
 }
 
 ColourRGBA Platform::ChromeHighlight() {
-	return ColourRGBA(0xff, 0xff, 0xff);
+	return white;
 }
 
 const char *Platform::DefaultFont() {

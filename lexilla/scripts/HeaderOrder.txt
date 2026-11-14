@@ -34,6 +34,7 @@
 #include <cstdarg>
 
 // C++ standard library
+#include <stdexcept>
 #include <utility>
 #include <string>
 #include <string_view>
@@ -46,7 +47,7 @@
 #include <iterator>
 #include <functional>
 #include <memory>
-#include <regex>
+#include <ios>
 #include <iostream>
 #include <sstream>
 #include <fstream>
@@ -81,6 +82,7 @@
 // lexlib
 #include "StringCopy.h"
 #include "PropSetSimple.h"
+#include "InList.h"
 #include "WordList.h"
 #include "LexAccessor.h"
 #include "Accessor.h"
@@ -95,9 +97,8 @@
 #include "DefaultLexer.h"
 #include "LexerBase.h"
 #include "LexerSimple.h"
-#include "LexerNoExceptions.h"
 
-// src
+// test
 
 #include "TestDocument.h"
 

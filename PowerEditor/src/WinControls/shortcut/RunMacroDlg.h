@@ -16,33 +16,42 @@
 
 // created by Daniel Volk mordorpost@volkarts.com
 
+
 #pragma once
+
+#include <windows.h>
 
 #include "RunMacroDlg_rc.h"
 #include "StaticDialog.h"
+#include "dpiManagerV2.h"
 
 class RunMacroDlg : public StaticDialog
 {
 public :
 	RunMacroDlg() = default;
-	~RunMacroDlg() = default;
+	~RunMacroDlg() override = default;
 
 	void doDialog(bool isRTL = false) {
 		if (!isCreated())
+		{
+			const auto dpiContext = DPIManagerV2::setThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
 			create(IDD_RUN_MACRO_DLG, isRTL);
+			DPIManagerV2::setThreadDpiAwarenessContext(dpiContext);
+		}
 		else
 		{
 			// Shortcut might have been updated for current session
 			// So reload the macro list (issue #4526)
 			initMacroList();
 			::ShowWindow(_hSelf, SW_SHOW);
+			::SendMessageW(_hSelf, DM_REPOSITION, 0, 0);
 		}
-	};
+	}
 
 	void initMacroList();
 
-	int isMulti() const { return isCheckedOrNot(IDC_M_RUN_MULTI); };
-	int getTimes() const {return _times;};
+	int isMulti() const { return isCheckedOrNot(IDC_M_RUN_MULTI); }
+	int getTimes() const { return _times; }
 	int getMacro2Exec() const;
 
 private :

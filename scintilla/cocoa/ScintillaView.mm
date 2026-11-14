@@ -12,6 +12,7 @@
 
 #include <cmath>
 
+#include <string>
 #include <string_view>
 #include <vector>
 #include <optional>
@@ -202,6 +203,9 @@ static NSCursor *cursorFromEnum(Window::Cursor cursor) {
 }
 
 - (void) drawRect: (NSRect) rect {
+	if (!NSContainsRect(self.bounds, rect)) {
+	    rect = self.bounds;
+	}
 	[super drawRect:rect];
 }
 
@@ -328,16 +332,19 @@ static NSCursor *cursorFromEnum(Window::Cursor cursor) {
 		return;
 	}
 
-	const NSRect *rects;
+	NSRect rectUnion {};
+	const NSRect *rects {};
 	NSInteger nRects = 0;
 	[self getRectsBeingDrawn: &rects count: &nRects];
 	if (nRects > 0) {
-		NSRect rectUnion = rects[0];
-		for (int i=0; i<nRects; i++) {
+		rectUnion = rects[0];
+		for (int i=1; i<nRects; i++) {
 			rectUnion = NSUnionRect(rectUnion, rects[i]);
 		}
-		mOwner.backend->WillDraw(rectUnion);
+	} else {
+		rectUnion = mOwner.scrollView.contentView.bounds;
 	}
+	mOwner.backend->WillDraw(rectUnion);
 	[super viewWillDraw];
 }
 
@@ -1349,10 +1356,17 @@ static NSCursor *cursorFromEnum(Window::Cursor cursor) {
  * (like clearing all marks and setting new ones etc.).
  */
 - (void) suspendDrawing: (BOOL) suspend {
-	if (suspend)
-		[self.window disableFlushWindow];
-	else
-		[self.window enableFlushWindow];
+	if (@available(macOS 10.14, *)) {
+		// Don't try where deprecated
+	} else {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+		if (suspend)
+			[self.window disableFlushWindow];
+		else
+			[self.window enableFlushWindow];
+#pragma GCC diagnostic pop
+	}
 }
 
 //--------------------------------------------------------------------------------------------------

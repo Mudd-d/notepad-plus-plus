@@ -17,13 +17,19 @@
 
 #pragma once
 
-#include "Window.h"
-#include "TaskListDlg.h"
-#include "Buffer.h"
+#include <windows.h>
 
-#define SORT_DIRECTION_NONE     -1
-#define SORT_DIRECTION_UP     0
-#define SORT_DIRECTION_DOWN   1
+#include <commctrl.h>
+
+#include <filesystem>
+#include <memory>
+#include <string>
+#include <vector>
+
+#include "Buffer.h"
+#include "NppDarkMode.h"
+#include "TaskListDlg.h"
+#include "Window.h"
 
 #define FS_ROOTNODE					"DocList"
 #define FS_CLMNNAME					"ColumnName"
@@ -36,56 +42,60 @@ class VerticalFileSwitcherListView : public Window
 {
 public:
 	VerticalFileSwitcherListView() = default;
-	virtual ~VerticalFileSwitcherListView() = default;
+	~VerticalFileSwitcherListView() override = default;
 
-	virtual void init(HINSTANCE hInst, HWND parent, HIMAGELIST hImaLst);
-	virtual void destroy();
+	virtual void init(HINSTANCE hInst, HWND hParent, UINT_PTR listViewID, HIMAGELIST hImaLst);
+	void destroy() override;
 	void initList();
 	BufferID getBufferInfoFromIndex(int index, int & view) const;
-	void setBgColour(int i) {
-		ListView_SetItemState(_hSelf, i, LVIS_SELECTED|LVIS_FOCUSED, 0xFF);
-	}
 	int newItem(BufferID bufferID, int iView);
 	int closeItem(BufferID bufferID, int iView);
 	void activateItem(BufferID bufferID, int iView);
 	void setItemIconStatus(BufferID bufferID);
-	generic_string getFullFilePath(size_t i) const;
+	std::wstring getFullFilePath(size_t i) const;
 	void setItemColor(BufferID bufferID);
 	
-	void insertColumn(const TCHAR *name, int width, int index);
+	void insertColumn(const wchar_t *name, int width, int index);
 	void resizeColumns(int totalWidth);
 	void deleteColumn(size_t i) {
 		ListView_DeleteColumn(_hSelf, i);
-	};
+	}
 	int nbSelectedFiles() const {
-		return static_cast<int32_t>(SendMessage(_hSelf, LVM_GETSELECTEDCOUNT, 0, 0));
-	};
+		return static_cast<int>(::SendMessage(_hSelf, LVM_GETSELECTEDCOUNT, 0, 0));
+	}
 
 	std::vector<BufferViewInfo> getSelectedFiles(bool reverse = false) const;
 	void reload();
 	void redrawItems();
 	void ensureVisibleCurrentItem() const {
 		ListView_EnsureVisible(_hSelf, _currentIndex, false);
-	};
+	}
 
 	void setBackgroundColor(COLORREF bgColour) {
 		ListView_SetBkColor(_hSelf, bgColour);
 		ListView_SetTextBkColor(_hSelf, bgColour);
 		redraw(true);
-    };
+	}
 
 	void setForegroundColor(COLORREF fgColour) {
 		ListView_SetTextColor(_hSelf, fgColour);
 		redraw(true);
-    };
+	}
+
+	void reSizeToWH(int width, int height);
+
+	void setDarkTheme() {
+		NppDarkMode::setDarkListView(_hSelf);
+		NppDarkMode::setDarkTooltips(_hSelf, NppDarkMode::ToolTipsType::listview);
+	}
 
 protected:
 	HIMAGELIST _hImaLst = nullptr;
 
 	int _currentIndex = 0;
 
-	static const int _groupID = 1;
-	static const int _group2ID = 2;
+	using Window::init;
+	using Window::reSizeToWH;
 
 	int find(BufferID bufferID, int iView) const;
 	int add(BufferID bufferID, int iView);
@@ -93,5 +103,5 @@ protected:
 	void removeAll();
 	void selectCurrentItem() const {
 		ListView_SetItemState(_hSelf, _currentIndex, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
-	};
+	}
 };

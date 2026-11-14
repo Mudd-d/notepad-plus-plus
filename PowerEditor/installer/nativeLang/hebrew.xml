@@ -1,5 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <NotepadPlus>
+	<!--
+	If "RTL" attribute is present and its value is "yes", then user can add "editZoneRTL" attribute beside,
+	and set the value of the attribute in question to "no", so Notepad++ GUI will be RTL,
+	but Scintilla zone will be LTR by opening files (see the commented example).
+	Of course, user can set any direction they want afterward, and what they have set on document will be remembered across the sessions.
+	-->
+	<!-- Native-Langue name="Hebrew" RTL="yes" editZoneRTL="no" filename="hebrew.xml" -->
 	<Native-Langue name="Hebrew" RTL="yes" filename="hebrew.xml">
 		<Menu>
 			<Main>
@@ -90,7 +97,6 @@
 					<Item id="42027" name="כיוון טקסט שמאל לימין"/>
 					<Item id="42028" name="הגדר לקריאה בלבד"/>
 					<Item id="42032" name="הרץ מאקרו מספר מוגדר של פעמים"/>
-					<Item id="42033" name="בטל קריאה בלבד"/>
 					<Item id="42034" name="עורך עמודות"/>
 					<Item id="42035" name="חסום הערה"/>
 					<Item id="42036" name="חסום אי הערה"/>
@@ -134,8 +140,6 @@
 					<Item id="44025" name="הצג מרווחים וטאבים"/>
 					<Item id="44026" name="הצג סוף שורה"/>
 					<Item id="44019" name="הצג את כל הסימנים המוסתרים"/>
-					<Item id="44027" name="שורת קצה אנכית"/>
-					<Item id="44028" name="שורת קצה מצב רקע"/>
 					<Item id="44020" name="הצג קווי עימוד"/>
 					<Item id="44022" name="עטיפת מילים"/>
 					<Item id="44023" name="התמקדות &amp;פנימה"/>
@@ -295,7 +299,6 @@
 				<Item id="1658" name="בכל תתי התיקיות"/>
 				<Item id="1659" name="בתיקיות חבויות"/>
 				<Item id="1660" name="החלף בקבצים"/>
-				<Item id="1661" name="עקוב מסמך נוכחי"/>
 				<Item id="1686" name="שקיפות"/>
 				<Item id="1687" name="באובדן מיקוד"/>
 				<Item id="1688" name="תמיד"/>

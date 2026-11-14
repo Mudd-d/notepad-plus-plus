@@ -86,12 +86,12 @@ namespace Scintilla::Internal {
 // Underlying the implementation of the platform classes are platform specific types.
 // Sometimes these need to be passed around by client code so they are defined here
 
-typedef void *SurfaceID;
-typedef void *WindowID;
-typedef void *MenuID;
-typedef void *TickerID;
-typedef void *Function;
-typedef void *IdlerID;
+using SurfaceID = void *;
+using WindowID = void *;
+using MenuID = void *;
+using TickerID = void *;
+using Function = void *;
+using IdlerID = void *;
 
 /**
  * Font management.
@@ -108,16 +108,18 @@ struct FontParameters {
 	Scintilla::Technology technology;
 	Scintilla::CharacterSet characterSet;
 	const char *localeName;
+	Scintilla::FontStretch stretch;
 
 	constexpr FontParameters(
 		const char *faceName_,
-		XYPOSITION size_=10,
-		Scintilla::FontWeight weight_= Scintilla::FontWeight::Normal,
-		bool italic_=false,
-		Scintilla::FontQuality extraFontFlag_= Scintilla::FontQuality::QualityDefault,
-		Scintilla::Technology technology_= Scintilla::Technology::Default,
-		Scintilla::CharacterSet characterSet_= Scintilla::CharacterSet::Ansi,
-		const char *localeName_=localeNameDefault) noexcept :
+		XYPOSITION size_,
+		Scintilla::FontWeight weight_,
+		bool italic_,
+		Scintilla::FontQuality extraFontFlag_,
+		Scintilla::Technology technology_,
+		Scintilla::CharacterSet characterSet_,
+		const char *localeName_,
+		Scintilla::FontStretch stretch_) noexcept :
 
 		faceName(faceName_),
 		size(size_),
@@ -126,7 +128,8 @@ struct FontParameters {
 		extraFontFlag(extraFontFlag_),
 		technology(technology_),
 		characterSet(characterSet_),
-		localeName(localeName_)
+		localeName(localeName_),
+		stretch(stretch_)
 	{
 	}
 
@@ -191,8 +194,8 @@ public:
 	virtual ~Surface() noexcept = default;
 	static std::unique_ptr<Surface> Allocate(Scintilla::Technology technology);
 
-	virtual void Init(WindowID wid)=0;
-	virtual void Init(SurfaceID sid, WindowID wid)=0;
+	virtual void Init(WindowID wid)=0;	// For measuring text
+	virtual void Init(SurfaceID sid, WindowID wid)=0;	// For drawing
 	virtual std::unique_ptr<Surface> AllocatePixMap(int width, int height)=0;
 
 	virtual void SetMode(SurfaceMode mode)=0;
@@ -260,10 +263,9 @@ public:
  */
 class Window {
 protected:
-	WindowID wid;
+	WindowID wid {};
 public:
-	Window() noexcept : wid(nullptr), cursorLast(Cursor::invalid) {
-	}
+	Window() noexcept = default;
 	Window(const Window &source) = delete;
 	Window(Window &&) = delete;
 	Window &operator=(WindowID wid_) noexcept {
@@ -288,7 +290,7 @@ public:
 	void SetCursor(Cursor curs);
 	PRectangle GetMonitorRect(Point pt);
 private:
-	Cursor cursorLast;
+	Cursor cursorLast = Cursor::invalid;
 };
 
 /**
@@ -299,7 +301,7 @@ private:
 
 struct ListBoxEvent {
 	enum class EventType { selectionChange, doubleClick } event;
-	ListBoxEvent(EventType event_) noexcept : event(event_) {
+	explicit ListBoxEvent(EventType event_) noexcept : event(event_) {
 	}
 };
 
@@ -314,6 +316,7 @@ struct ListOptions {
 	std::optional<ColourRGBA> foreSelected;
 	std::optional<ColourRGBA> backSelected;
 	AutoCompleteOption options=AutoCompleteOption::Normal;
+	float imageScale=1.0f;
 };
 
 class ListBox : public Window {
@@ -369,7 +372,8 @@ const char *DefaultFont();
 int DefaultFontSize();
 unsigned int DoubleClickTime();
 constexpr long LongFromTwoShorts(short a,short b) noexcept {
-	return (a) | ((b) << 16);
+	constexpr short shortBits = 16;
+	return a | (b << shortBits);
 }
 
 }
